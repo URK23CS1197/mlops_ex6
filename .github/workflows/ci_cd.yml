@@ -1,0 +1,59 @@
+name: CI/CD for Diabetes Prediction Web App
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  train_model:
+    name: Train Model and Save PKL (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Train model and save PKL
+      run: python dia_ml.py  # This script trains and saves the model
+
+  docker_test:
+    name: Build & Test Docker Image
+    needs: train_model
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t diabetes-flask-app .
+
+    - name: Run Docker container
+      run: docker run -d -p 5000:5000 --name diabetes-app diabetes-flask-app
+
+    - name: Wait for app to start
+      run: sleep 20  # Increased wait time for app readiness
+
+    - name: Test app
+      run: |
+        set -e
+        if ! curl -f http://localhost:5000; then
+          echo "Container logs:"
+          docker logs diabetes-app
+          exit 1
+        fi
+
+    - name: Stop & Remove container
+      run: |
+        docker stop diabetes-app
+        docker rm diabetes-app
