@@ -29,7 +29,7 @@ jobs:
       run: python evaluate_model.py
 
     - name: Upload model and metrics
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: model-and-metrics
         path: |
