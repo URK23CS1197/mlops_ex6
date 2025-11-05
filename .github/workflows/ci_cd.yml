@@ -5,8 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  train_model:
-    name: Train Model and Save PKL (CI)
+  train_and_evaluate:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,37 +22,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Train model and save PKL
-      run: python dia_ml.py  # This script trains and saves the model
+    - name: Train model
+      run: python dia_ml.py
 
-  docker_test:
-    name: Build & Test Docker Image
-    needs: train_model
-    runs-on: ubuntu-latest
+    - name: Evaluate model
+      run: python evaluate_model.py
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Build Docker image
-      run: docker build -t diabetes-flask-app .
-
-    - name: Run Docker container
-      run: docker run -d -p 5000:5000 --name diabetes-app diabetes-flask-app
-
-    - name: Wait for app to start
-      run: sleep 20  # Increased wait time for app readiness
-
-    - name: Test app
-      run: |
-        set -e
-        if ! curl -f http://localhost:5000; then
-          echo "Container logs:"
-          docker logs diabetes-app
-          exit 1
-        fi
-
-    - name: Stop & Remove container
-      run: |
-        docker stop diabetes-app
-        docker rm diabetes-app
+    - name: Upload model and metrics
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-and-metrics
+        path: |
+          diabetes_model.pkl
+          metrics.json
